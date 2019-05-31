@@ -58,7 +58,7 @@ class AMS_offline(object):
             for j in range(self.s2):
                 idx = np.random.choice(a=RANGE, size=1, p=prob)[0]
                 r = np.random.randint(low=1, high=self.frequency_vector[idx], size=1)[0]
-                self.X[i][j] = self.frequency_vector[idx] * (r**k - (r - 1)**k)
+                self.X[i][j] = self.F_1 * (r**k - (r - 1)**k)
 
         Y = np.mean(self.X, axis=0)
         estimation = np.median(Y)
@@ -67,15 +67,21 @@ class AMS_offline(object):
 
 
 
+    def estimate_Fk_vectorized(self, k):
+        prob = self.frequency_vector / self.F_1
+        idx = np.random.choice(a=RANGE, size=(self.s1, self.s2), p=prob)
 
-a = np.random.randint(low=0, high=RANGE, size=SIZE_STREAM)
-ground = np.sum(a**2)
-A = AMS_offline(a, S1, S2)
-tri = A.estimate_F2()
-ans = A.estimate_Fk(2)
+        onehot_idx = np.eye(RANGE)[idx]
+        freq = np.matmul(onehot_idx, self.frequency_vector)
+        offset = np.random.random(size=(self.s1, self.s2))
+        r = np.round((freq - 1) * offset) + 1
 
 
-print(ground)
-print(tri)
-print(ans)
+        X = (np.power(r, k) - np.power(r-1, k)) * self.F_1
+        Y = np.mean(X, axis=0)
+        estimation = np.median(Y)
+        return estimation
+
+
+
 
