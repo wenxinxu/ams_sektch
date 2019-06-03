@@ -10,8 +10,8 @@ def get_s1_s2(n, k, lambd, epsilon, sketch_type):
         return s1,s2 
 
     elif sketch_type == 'ams':
-        s1 = 16 / lambd**2 
-        s2 = 2 * np.log(1 /epsilon)
+        s1 = int(np.ceil(16 / lambd**2 ))
+        s2 = int(np.ceil(2 * np.log(1 /epsilon)))
         return s1, s2 
 
     else: 
