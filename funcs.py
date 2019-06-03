@@ -5,7 +5,7 @@ from collections import Counter
 
 def get_s1_s2(n, k, lambd, epsilon, sketch_type):
     if sketch_type == 'Fk':
-        s1 = int(np.ceil(  8*self.k*self.n**(1-1/self.k)/lambd**2  ))
+        s1 = int(np.ceil(  8*k*n**(1-1/k)/lambd**2  ))
         s2 = 2 * np.log(1/epsilon)
         return s1,s2 
 
