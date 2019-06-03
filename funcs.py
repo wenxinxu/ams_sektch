@@ -1,8 +1,27 @@
 import numpy as np 
+from collections import Counter 
 
 #### utility funcs. 
 
+def get_s1_s2(n, k, lambd, epsilon, sketch_type):
+    if sketch_type == 'Fk':
+        s1 = int(np.ceil(  8*self.k*self.n**(1-1/self.k)/lambd**2  ))
+        s2 = 2 * np.log(1/epsilon)
+        return s1,s2 
 
+    elif sketch_type == 'ams':
+        s1 = 16 / lambd**2 
+        s2 = 2 * np.log(1 /epsilon)
+        return s1, s2 
+
+    else: 
+        raise NotImplementedError()
+
+
+def get_frequency_vector(stream):
+    counter = Counter(stream)
+    frequency_vector = np.array([counter[i] for i in sorted(list(counter))])
+    return frequency_vector
 
 #m is hte size of the stream. 
 def stream_distribution(mode,m, param1=0,param2=0):
@@ -180,7 +199,7 @@ def poly_hash_vectorized(s1, s2, r, kwargs):
     hashed = (res % 2) * 2 - 1
     return hashed
 
-def totally_random_vectorized(s1,s2,r, kwargs):
+def totally_random_vectorized(s1,s2,n, kwargs):
     return np.random.choice([1,-1], size=(s1, s2, n))
 
 # TODO: online update
@@ -191,32 +210,37 @@ class AMS_offline(object):
     stream. Online update is not implemented yet.
     '''
 
-    def __init__(self, stream, lambd, epsilon, hash_type, hash_kwargs):
+    def __init__(self, stream, lambd, epsilon, hash_type, hash_kwargs, k=2, sketch_type='ams'):
         '''
         Build frequency vector
         :param stream: list of non-negative integer in range(0, RANGE)
         :param hash_generator: function that when call returns a hash function of the desired type. e.g.
         >>> hash_generator = lambda k: poly_hash(k);
         '''
+        assert (k==2 and sketch_type=='ams') or (sketch_type=='Fk')
 
-        counter = Counter(stream)
-        self.frequency_vector = np.array([counter[i] for i in sorted(list(counter))])
+        self.stream = stream
+        self.frequency_vector = get_frequency_vector(stream)
 
         self.F_1 = np.sum(self.frequency_vector)
         self.n = self.frequency_vector.shape[0] #size of universe. 
+        self.k = k #usually 2 for second frequency moment. 
         
         #compute s1 and s2 as in the paper
-        self.s1 = int(np.ceil(1*k*n**(1-1/k)/lambd**2))
-        self.s2 = int(np.ceil(2*np.log(1/epsilon)))
+        self.s1,self.s2 = get_s1_s2(n, k, lambd, epsilon, sketch_type)
+        self.truth = self.get_truth() 
 
-        self.stream = stream
 
         self.hash_type = hash_type
         self.hash_generator = self.get_hash_generator(hash_kwargs)
         self.hash_matrix_fnc= self.get_hash_matrix_fnc()
-        self.hashing_matrix = self.hash_matrix_fnc(s1,s2,r, hash_kwargs); 
+        self.hashing_matrix = self.hash_matrix_fnc(self.s1, self.s2, self.n, hash_kwargs); 
 
-    def get_hash_generator(hash_kwargs):
+    def get_truth(self): 
+        return np.sum(self.frequency_vector**self.k)
+         
+
+    def get_hash_generator(self, hash_kwargs):
         assert self.hash_type in ['tabulation', 'poly', 'random'] #implemented only. 
 
         if self.hash_type == 'tabulation':
@@ -229,7 +253,7 @@ class AMS_offline(object):
             return lambda x: np.random_choice([1,-1])
 
 
-    def get_hash_matrix_fnc():
+    def get_hash_matrix_fnc(self):
         assert self.hash_type in ['tabulation', 'poly', 'random'] #implemented only. 
 
         if self.hash_type == 'tabulation':
@@ -239,7 +263,7 @@ class AMS_offline(object):
             return poly_hash_vectorized
 
         elif self.hash_type == 'random':
-            return lambda x: np.random_choice([1,-1])
+            return totally_random_vectorized
 
 
         
@@ -252,7 +276,7 @@ class AMS_offline(object):
         :return: estimated F_2
         '''
         
-        self.hashing_matrix = np.random.choice(a = [1, -1], size=(self.s1, self.s2, n), replace=True)
+        # self.hashing_matrix = np.random.choice(a = [1, -1], size=(self.s1, self.s2, self.n), replace=True)
         Z = np.matmul(self.hashing_matrix, self.frequency_vector)
         X = np.square(Z)
         Y = np.mean(X, axis=0)
