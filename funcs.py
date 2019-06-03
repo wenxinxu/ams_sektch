@@ -225,9 +225,12 @@ class AMS_offline(object):
         self.F_1 = np.sum(self.frequency_vector)
         self.n = self.frequency_vector.shape[0] #size of universe. 
         self.k = k #usually 2 for second frequency moment. 
+        self.lambd = lambd
+        self.epsilon = epsilon
+        self.sketch_type = sketch_type
         
         #compute s1 and s2 as in the paper
-        self.s1,self.s2 = get_s1_s2(n, k, lambd, epsilon, sketch_type)
+        self.s1,self.s2 = get_s1_s2(self.n, self.k, self.lambd, self.epsilon, self.sketch_type)
         self.truth = self.get_truth() 
 
 
