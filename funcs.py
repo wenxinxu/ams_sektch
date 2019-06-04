@@ -1,7 +1,18 @@
 import numpy as np 
 from collections import Counter 
+import os 
 
 #### utility funcs. 
+def output_error(stream, k, lambd, epsilon, project, kwargs):
+    idx = np.random.randint(1,1e12)
+    filename = os.path.join(project, f"{idx}.result")
+
+
+    ams = AMS_offline(stream, lambd, epsilon, 'poly', {'k':k}, **kwargs)
+    estimator = ams.estimate_F2()
+    truth = ams.get_truth()
+    err = np.absolute(estimator - truth)/ truth
+    print(err, file=open(filename, 'w'))
 
 def get_s1_s2(n, k, lambd, epsilon, sketch_type):
     if sketch_type == 'Fk':
@@ -9,7 +20,7 @@ def get_s1_s2(n, k, lambd, epsilon, sketch_type):
         s2 = 2 * np.log(1/epsilon)
         return s1,s2 
 
-    elif sketch_type == 'ams':
+    elif sketch_type == 'ams' and k==2:
         s1 = int(np.ceil(16 / lambd**2 ))
         s2 = int(np.ceil(2 * np.log(1 /epsilon)))
         return s1, s2 
@@ -210,7 +221,7 @@ class AMS_offline(object):
     stream. Online update is not implemented yet.
     '''
 
-    def __init__(self, stream, lambd, epsilon, hash_type, hash_kwargs, k=2, sketch_type='ams'):
+    def __init__(self, stream, lambd, epsilon, hash_type, hash_kwargs, k=2, sketch_type='ams', double_means=False):
         '''
         Build frequency vector
         :param stream: list of non-negative integer in range(0, RANGE)
@@ -219,6 +230,7 @@ class AMS_offline(object):
         '''
         assert (k==2 and sketch_type=='ams') or (sketch_type=='Fk')
 
+        self.double_means = double_means
         self.stream = stream
         self.frequency_vector = get_frequency_vector(stream)
 
@@ -283,8 +295,12 @@ class AMS_offline(object):
         Z = np.matmul(self.hashing_matrix, self.frequency_vector)
         X = np.square(Z)
         Y = np.mean(X, axis=0)
-        estimation = np.median(Y)
 
+        if self.double_means == True: 
+            estimation = np.mean(Y)
+            return estimation
+
+        estimation = np.median(Y)
         return estimation
 
 
